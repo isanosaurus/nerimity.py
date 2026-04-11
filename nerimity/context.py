@@ -5,6 +5,7 @@ from nerimity.message import Message
 from nerimity.server import Server
 from nerimity._enums import GlobalClientInformation
 from nerimity.button import Button
+from nerimity.embed import Embed
 
 class Context():
     """
@@ -25,6 +26,7 @@ class Context():
         self.author : ServerMember  = None
         self.channel: Channel       = message.channel
         self.server : Server        = None
+        self.embed  : None          = None # TODO: Add 
 
         for server in GlobalClientInformation.SERVERS.values():
             if str(message.channel_id) in server.channels.keys():
@@ -33,9 +35,9 @@ class Context():
                 self.author  = GlobalClientInformation.SERVERS[f"{server.id}"].members[f"{message.author_id}"]
 
     # Public: Sends a message to the channel the command was sent to.
-    async def send(self, response: str, attachment: Attachment | None = None, buttons: list[Button] = None) -> Message:
+    async def send(self, response: str, attachment: Attachment | None = None, buttons: list[Button] = None, embed: Embed | None = None) -> Message:
         """Sends a message to the channel the command was sent to."""
-        return await self.channel.send_message(response, attachment, buttons)
+        return await self.channel.send_message(response, attachment, buttons, embed)
 
     # Public: Removes the original message.
     async def remove(self) -> None:

@@ -189,6 +189,39 @@ async def testbutton(ctx: nerimity.Context):
     await ctx.send("Test", buttons=[message_button, popup_button])
 ```
 
+### Sending an HTML embed
+```py
+import pathlib
+import random
+import bs4
+
+wlc_gifs = [
+    "https://c.tenor.com/1MfQk9vFF7MAAAAC/tenor.gif",
+    "https://c.tenor.com/x8Vc_4yrQuoAAAAC/tenor.gif",
+]
+
+@client.command(name="testwelcomeembed")
+async def testwelcomeembed(ctx: nerimity.Context):
+    # Load the HTML template and modify it using BeautifulSoup
+    html_path = pathlib.Path(__file__).parent / "welcome_embed.html"
+    soup = bs4.BeautifulSoup(html_path.read_text(encoding="utf-8"), "html.parser")
+
+    # Edit the HTML elements as needed (e.g., set the background image, avatar, and username)
+    bg_image = soup.find(class_="bgimage")
+    bg_image["src"] = random.choice(wlc_gifs)
+
+    avatar_elem = soup.find(class_="avatar-img")
+    avatar_elem["src"] = f"https://cdn.nerimity.com/{ctx.author.avatar}"
+
+    name_elem = soup.find(class_="uname")
+    name_elem.string = ctx.author.username
+
+    # Convert the modified HTML to a string and create an embed
+    embed = nerimity.Embed.construct(str(soup))
+    # Attach the embed to a message and send it
+    await ctx.send(f"[@:{ctx.author.id}]", embed=embed)
+```
+
 ### Creating a post
 ```py
 @client.command(name="createpost")

@@ -553,7 +553,7 @@ class Client:
                 print(f"{ConsoleShortcuts.log()} Launching in restart always mode. Bot will restart if it crashes.")
                 while True:
                     try:
-                        asyncio.get_event_loop().run_until_complete(main())
+                        asyncio.run(main())
                     except Exception as e:
                         print(f"{ConsoleShortcuts.error()} Bot crashed with error: {e}")
                         traceback.print_exc()
@@ -561,7 +561,7 @@ class Client:
                 last_crash = 0
                 while True:
                     try:
-                        asyncio.get_event_loop().run_until_complete(main())
+                        asyncio.run(main())
                     except Exception as e:
                         print(f"{ConsoleShortcuts.error()} Bot crashed with error: {e}")
                         traceback.print_exc()
@@ -574,4 +574,4 @@ class Client:
                     last_crash = time.time()
         else:
             print(f"{ConsoleShortcuts.log()} Launching in debug mode, any uncaught exception will crash the bot.")
-            asyncio.get_event_loop().run_until_complete(main())
+            asyncio.run(main())

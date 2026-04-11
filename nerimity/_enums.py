@@ -59,6 +59,9 @@ class AttachmentTypes():
     INCOMING = 0
     OUTGOING = 1
 
+class EmbedTypes():
+    HTML = 0
+
 class Permissions:
     """ Permissions class """
     class ChannelPermissions():

@@ -3,6 +3,7 @@ import asyncio
 import json
 from nerimity.message import Message
 from nerimity.attachment import Attachment
+from nerimity.embed import Embed
 from nerimity._enums import GlobalClientInformation, ConsoleShortcuts
 from nerimity.button import Button
 from nerimity.roles import Role
@@ -80,7 +81,7 @@ class Channel():
                         return Channel.deserialize(await response.json())
 
     # Public: Sends a message to the channel.
-    async def send_message(self, message_content: str, attachment: Attachment | None = None, buttons: list[Button] | None = None) -> Message:
+    async def send_message(self, message_content: str, attachment: Attachment | None = None, buttons: list[Button] | None = None, embed: Embed | None = None) -> Message:
         """Sends a message to the channel."""
         
         api_endpoint = f"{GlobalClientInformation.API_URL}/channels/{self.id}/messages"
@@ -92,6 +93,9 @@ class Channel():
             "content": message_content,
             "buttons": []
         }
+
+        if embed is not None:
+            data.update(embed.to_payload())
 
         if buttons is not None:
             for button in buttons:
