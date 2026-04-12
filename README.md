@@ -1,6 +1,6 @@
 # nerimity.py
 
-Python API wrapper for Nerimity originating from [Fiiral](https://github.com/F-iiral), maintained by [Deutscher775](https://github.com/Deutscher775)
+Python API wrapper for Nerimity originating from [Fiiral](https://github.com/F-iiral), maintained by [isanosaurus](https://github.com/isanosaurus)
 ### **[Nerimity Server](https://nerimity.com/i/493CV)** <br>
 For questions, help or anything else feel free to join the **[nerimity.py](https://nerimity.com/i/493CV)** Nerimity server.
 # Quick jumps
@@ -115,7 +115,7 @@ pip install nerimity
 ## Option 2: clone this repository
 1. Clone the repository
 ```shell
-git clone https://github.com/deutscher775/nerimity.py.git
+git clone https://github.com/isanosaurus/nerimity.py.git
 ```
 2. Copy the `nerimity` folder and insert it into your workspace. It should look like this:
 ![Image](./readme-assets/directory-view.png)
@@ -160,7 +160,7 @@ client.run()
 ```
 
 ## Issues
-If you encounter any issues while using the framework feel free to open an [Issue](https://github.com/deutscher775/nerimity.py).
+If you encounter any issues while using the framework feel free to open an [Issue](https://github.com/isanosaurus/nerimity.py).
 
 ## Use case examples
 ### Sending an attachment
@@ -305,4 +305,4 @@ async def setpermissions(ctx: nerimity.Context, params):
 
 
 ## Issues
-If you encounter any issues while using the framework feel free to open an [Issue](https://github.com/deutscher775/nerimity.py).
+If you encounter any issues while using the framework feel free to open an [Issue](https://github.com/isanosaurus/nerimity.py).
