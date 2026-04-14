@@ -7,7 +7,7 @@ readme = (readme_path / "README.md").read_text()
 
 setup (
     name="nerimity",
-    version="1.5.1",
+    version="1.5.2",
     packages=find_packages(),
     long_description=readme,
     long_description_content_type="text/markdown",
