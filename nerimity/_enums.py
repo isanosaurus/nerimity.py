@@ -61,6 +61,7 @@ class AttachmentTypes():
 
 class EmbedTypes():
     HTML = 0
+    STANDARD = 1
 
 class Permissions:
     """ Permissions class """

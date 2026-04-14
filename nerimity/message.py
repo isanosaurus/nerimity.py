@@ -1,6 +1,9 @@
+from ast import Add
+
 from nerimity.member import Member
+from nerimity.embed import Embed
 from nerimity.attachment import Attachment
-from nerimity._enums import GlobalClientInformation, ConsoleShortcuts
+from nerimity._enums import EmbedTypes, GlobalClientInformation, ConsoleShortcuts
 
 import requests
 import json
@@ -39,7 +42,7 @@ class Message():
         self.channel         : Channel                  = None
         self.edited_at       : float | None             = None
         self.created_at      : float                    = None
-        self.embed           : str                      = None
+        self.embed           : Embed | None             = None
         self.mentions        : list | None              = None
         self.quoted_messages : list | None              = None
         self.reactions       : list | None              = None
@@ -132,7 +135,8 @@ class Message():
         new_message.author_id       = int(json["createdById"])
         new_message.edited_at       = float(json["editedAt"])                                           if json["editedAt"]       is not None else None
         new_message.created_at      = float(json["createdAt"])
-        new_message.embed           = str(json["embed"])
+        embed = Embed.construct(json["embed"], type=EmbedTypes.STANDARD) if json["embed"] is not None else (Embed.construct(json["htmlEmbed"], type=EmbedTypes.HTML) if json["htmlEmbed"] is not None else None)
+        new_message.embed           = embed
         new_message.mentions        = list(json["mentions"])                                            if json["mentions"]       is not None else []
         new_message.quoted_messages = list(json["quotedMessages"])                                      if json["quotedMessages"] is not None else []
         new_message.reactions       = list(json["reactions"])                                           if json["reactions"]      is not None else []

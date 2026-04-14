@@ -1,4 +1,7 @@
 from pathlib import Path
+import base64
+import zlib
+import json
 from nerimity._enums import EmbedTypes
 
 
@@ -6,26 +9,27 @@ class Embed():
 	"""
 	Represents a Nerimity embed payload.
 
-	The current implementation supports HTML embeds.
+	The current implementation supports HTML embeds and standard embeds (not yet implemented in Nerimity).
 
-	type: Embed type, see EmbedTypes.
-	html: Raw HTML that will be sent as htmlEmbed.
+	type: The type of the embed (e.g., HTML, standard).
+	body: The body of the embed, which can be raw HTML or a string representation of a standard embed.
 
 	construct(html): static | Creates an Embed from raw HTML.
 	from_file(file_path, encoding): static | Creates an Embed by reading an HTML file.
 	to_payload(): Converts this embed to an API payload fragment.
+	_decode(data): private static | Unzips the Base64, zipped data from the Websocket into a JSON object.
 	"""
 
-	def __init__(self, html: str = "", embed_type: int = EmbedTypes.HTML) -> None:
-		self.type: int = embed_type
-		self.html: str = str(html)
+	def __init__(self, data: str = "", type: int = EmbedTypes.HTML) -> None:
+		self.type: int = type
+		self.body: str = Embed._decode(data) if type == EmbedTypes.HTML and data else data
 
 	# Public Static: Creates an Embed from raw HTML.
 	@staticmethod
-	def construct(html: str) -> 'Embed':
+	def construct(data: str, type: int = EmbedTypes.HTML) -> 'Embed':
 		"""static | Creates an Embed from raw HTML."""
 
-		return Embed(html=html)
+		return Embed(data=data, type=type)
 
 	# Public Static: Creates an Embed by reading an HTML file.
 	@staticmethod
@@ -34,7 +38,7 @@ class Embed():
 
 		resolved_path = Path(file_path)
 		with resolved_path.open("r", encoding=encoding) as html_file:
-			return Embed(html=html_file.read())
+			return Embed(body=html_file.read())
 
 	# Public: Converts this embed to an API payload fragment.
 	def to_payload(self) -> dict:
@@ -45,4 +49,28 @@ class Embed():
 		}
 
 	def __str__(self) -> str:
-		return self.html
+		return self.body
+	
+	# Private Static: Unzips the Base64, zipped data from the Websocket into a JSON object.
+	@staticmethod
+	def _decode(data: str) -> dict:
+		"""private static | Unzips the Base64, zipped data from the Websocket into a JSON object."""
+		decoded_data = base64.b64decode(data)
+		decompressed_data = zlib.decompress(decoded_data)
+		return json.loads(decompressed_data.decode("utf-8"))
+	
+	# Static: Deserialize a JSON object to an Embed object.
+	@staticmethod
+	def deserialize(json: dict) -> 'Embed':
+		"""static | Deserialize a JSON object to an Embed object."""
+
+		if not isinstance(json, dict):
+			raise TypeError(f"Invalid JSON object for deserialization: {json}")
+	
+		if "htmlEmbed" in json and json["htmlEmbed"] is not None:
+			return Embed(body=Embed._decode(json["htmlEmbed"]), type=EmbedTypes.HTML)
+		
+		if "embed" in json and json["embed"] is not None:
+			return Embed(body=str(json["embed"]), type=EmbedTypes.STANDARD)
+
+		raise ValueError(f"Invalid JSON object for deserialization: {json}")

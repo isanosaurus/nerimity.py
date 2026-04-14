@@ -261,21 +261,19 @@ class Client:
             elif message_raw.startswith("42[\"message:updated"):
                     
                     for listener in self.event_listeners["on_message_updated"]:
-                        await asyncio.create_task(listener.__call__(json.loads(message_raw.removeprefix("42"))[1]))
+                        await asyncio.create_task(listener.__call__(Message.deserialize(json.loads(message_raw.removeprefix("42"))[1]["message"])))
             elif message_raw.startswith("42[\"message:created"):
                     
                     message = Message.deserialize(json.loads(message_raw.removeprefix("42"))[1]["message"])
                     await self._process_commands(message)
                     
                     for listener in self.event_listeners["on_message_create"]:
-                        await asyncio.create_task(listener.__call__(json.loads(message_raw.removeprefix("42"))[1]))
+                        await asyncio.create_task(listener.__call__(Message.deserialize(json.loads(message_raw.removeprefix("42"))[1]["message"])))
             elif message_raw.startswith("42[\"message:deleted"):
                     
                     for listener in self.event_listeners["on_message_deleted"]:
-                        await asyncio.create_task(listener.__call__(json.loads(message_raw.removeprefix("42"))[1]))
+                        await asyncio.create_task(listener.__call__(Message.deserialize(json.loads(message_raw.removeprefix("42"))[1]["message"])))
             elif message_raw.startswith("42[\"message:button_clicked"):
-                print("Button clicked")
-                 
                 message = json.loads(message_raw.removeprefix("42"))[1]
                 client_buttons = GlobalClientInformation.BUTTONS
 
