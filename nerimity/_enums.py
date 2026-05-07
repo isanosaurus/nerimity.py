@@ -4,6 +4,7 @@ class GlobalClientInformation():
     TOKEN = ''
     SERVERS = {}
     BUTTONS = []
+    MODALS = {}
     API_URL = 'https://nerimity.com/api'
     CDN_URL = 'https://cdn.nerimity.com'
     WEBSOCKET_URL = 'wss://nerimity.com'
@@ -17,6 +18,8 @@ class ConsoleShortcuts():
     def warn():  return f"{Colors.YELLOW}[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}]{Colors.WHITE} |"
     @staticmethod
     def error(): return f"{Colors.RED}[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}]{Colors.WHITE} |"
+    @staticmethod
+    def debug(): return f"{Colors.CYAN}[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}]{Colors.WHITE} |"
 
 class Colors():
     BLACK = "\u001b[30m"
@@ -54,6 +57,11 @@ class MessageType():
     KICK_USER = 3
     BAN_USER = 4
     CALL_STARTED = 5
+
+class ModalComponentTypes():
+    TEXT = "text"
+    INPUT = "input"
+    DROPDOWN = "dropdown"
 
 class AttachmentTypes():
     INCOMING = 0

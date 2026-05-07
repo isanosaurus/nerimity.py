@@ -1,4 +1,4 @@
-from nerimity._enums import GlobalClientInformation, Colors, ChannelTypes, PresenceTypes, BadgeTypes, AttachmentTypes, MessageType, Permissions
+from nerimity._enums import GlobalClientInformation, Colors, ChannelTypes, PresenceTypes, BadgeTypes, AttachmentTypes, MessageType, Permissions, ModalComponentTypes
 from nerimity.attachment import Attachment
 from nerimity.channel import Channel
 from nerimity.client import Client
@@ -14,5 +14,6 @@ from nerimity.button import Button
 from nerimity.buttoninteraction import ButtonInteraction
 from nerimity.slashcommand import SlashCommand
 from nerimity.embed import Embed
+from nerimity.modal import Modal, ModalComponent, ModalDropdownOption
 
 pass

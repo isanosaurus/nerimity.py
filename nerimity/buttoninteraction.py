@@ -1,44 +1,48 @@
 from nerimity.button import Button
 import requests
-from nerimity._enums import ConsoleShortcuts, GlobalClientInformation
+from nerimity._enums import GlobalClientInformation
+from nerimity.logger import logger
+from nerimity.modal import Modal
+from nerimity.embed import Embed
+from nerimity.attachment import Attachment
+from nerimity.context import Context
+from nerimity.message import Message
+from nerimity.channel import Channel
+from nerimity.member import ServerMember
+
 
 class ButtonInteraction():
-    def __init__(self, messageId: int = None, channelId: int = None, button: Button = None, userId: int = None) -> None:
-        self.messageId = messageId
-        self.channelId = channelId
-        self.button = button
-        self.userId = userId
-    
+    def __init__(self) -> None:
+        self.message    : 'Message' = None
+        self.channel    : 'Channel' = None
+        self.button     : 'Button' = None
+        self.user       : 'ServerMember' = None
+        self.data       : dict = None
 
-    def send_popup(self, title: str, content: str) -> None:
-        """Sends a popup to the user who clicked the button."""
-        api_url = f"{GlobalClientInformation.API_URL}/channels/{self.channelId}/messages/{self.messageId}/buttons/{self.button.id}/callback"
+    async def send_message(self, content: str, attachment: 'Attachment' = None, buttons: list['Button'] = None, embed: 'Embed' = None) -> None:
+        """Sends a message to the channel where the button was clicked."""
+        await self.channel.send_message(content, attachment, buttons, embed)
 
-        headers = {
-            "Authorization": GlobalClientInformation.TOKEN
-        }
+    async def send_modal(self, modal: 'Modal') -> None:
+        """Sends a modal to the user who clicked the button and registers it for submit routing."""
+        await self.channel.send_modal(modal=modal, user_id=self.user.id, message_id=self.message.id, closebuttonlabel=modal.closebuttonlabel)
 
-        data = {
-            "userId": str(self.userId),
-            "title": title,
-            "content": content
-        }
-
-        response = requests.post(api_url, json=data, headers=headers)
-        if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error} Failed to send popup: {response.text}")
-
-    
     @staticmethod
     def deserialize(json: dict) -> 'ButtonInteraction':
         """Deserialize a json string to a ButtonInteraction object."""
-        print(json)
-        buttonInteraction = ButtonInteraction()
-        buttonInteraction.messageId     = int(json["messageId"])
-        buttonInteraction.channelId     = int(json["channelId"])
-        buttonInteraction.button        = json["button"]
-        buttonInteraction.userId        = int(json["userId"])
+        from nerimity.message import Message
+        from nerimity.channel import Channel
+        from nerimity.member import ServerMember
 
-        return buttonInteraction
+        bi = ButtonInteraction()
 
-        
+        msg = Message()
+        msg.id = int(json["messageId"])
+        bi.message = msg
+
+        bi.channel = Channel.get_channel(int(json["channelId"]))
+        bi.button  = json["button"]
+        bi.user    = ServerMember.get_member(int(json["userId"]))
+        bi.data    = json.get("data", None)
+
+        return bi

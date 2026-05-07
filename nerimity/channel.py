@@ -4,9 +4,11 @@ import json
 from nerimity.message import Message
 from nerimity.attachment import Attachment
 from nerimity.embed import Embed
-from nerimity._enums import GlobalClientInformation, ConsoleShortcuts
+from nerimity._enums import GlobalClientInformation
+from nerimity.logger import logger
 from nerimity.button import Button
 from nerimity.roles import Role
+from nerimity.modal import Modal
 
 class Channel():
     """
@@ -61,7 +63,7 @@ class Channel():
         async with aiohttp.ClientSession() as session:
             async with session.post(api_endpoint, headers=headers, json=data) as response:
                 if response.status != 200:
-                    print(f"{ConsoleShortcuts.error()} Failed to update a channel for {self}. Status code: {response.status}. Response Text: {await response.text()}")
+                    logger.error(f"Failed to update a channel for {self}. Status code: {response.status}. Response Text: {await response.text()}")
                     raise aiohttp.ClientResponseError(response.request_info, response.history)
 
             if content is not None:
@@ -70,13 +72,13 @@ class Channel():
                 if content == "":
                     async with session.delete(api_endpoint, headers=headers) as response:
                         if response.status != 200:
-                            print(f"{ConsoleShortcuts.error()} Failed to update a channel for {self}. Status code: {response.status}. Response Text: {await response.text()}")
+                            logger.error(f"Failed to update a channel for {self}. Status code: {response.status}. Response Text: {await response.text()}")
                             raise aiohttp.ClientResponseError(response.request_info, response.history)
                         return Channel.deserialize(await response.json())
                 else:
                     async with session.put(api_endpoint, headers=headers, json={"content": content}) as response:
                         if response.status != 200:
-                            print(f"{ConsoleShortcuts.error()} Failed to update a channel for {self}. Status code: {response.status}. Response Text: {await response.text()}")
+                            logger.error(f"Failed to update a channel for {self}. Status code: {response.status}. Response Text: {await response.text()}")
                             raise aiohttp.ClientResponseError(response.request_info, response.history)
                         return Channel.deserialize(await response.json())
 
@@ -105,22 +107,56 @@ class Channel():
                     "alert": button.alert
                 })
                 GlobalClientInformation.BUTTONS.append(button)
-                
+
 
         async with aiohttp.ClientSession() as session:
             if attachment is not None:
                 async with session.post(f"{GlobalClientInformation.CDN_URL}/attachments/{str(self.id)}/{attachment.file_id}") as response:
                     if response.status != 200:
-                        print(f"{ConsoleShortcuts.error()} Failed to send attachment to {self}. Status code: {response.status}. Response Text: {await response.text()}")
+                        logger.error(f"Failed to send attachment to {self}. Status code: {response.status}. Response Text: {await response.text()}")
                         raise aiohttp.ClientResponseError(response.request_info, response.history)
                     data["nerimityCdnFileId"] = (await response.json()).get("fileId")
 
             async with session.post(api_endpoint, headers=headers, json=data) as response:
                 if response.status != 200:
-                    print(f"{ConsoleShortcuts.error()} Failed to send message to {self}. Status code: {response.status}. Response Text: {await response.text()}")
+                    logger.error(f"Failed to send message to {self}. Status code: {response.status}. Response Text: {await response.text()}")
                     raise aiohttp.ClientResponseError(response.request_info, response.history)
                 message_data = await response.json()
                 return Message.deserialize(message_data)
+    
+    # Public: Sends a Modal to a specific user via its attached button's callback endpoint.
+    async def send_modal(self, modal: Modal, user_id: int, message_id: int, closebuttonlabel: str) -> None:
+        """Sends a modal to a user. Uses the modal's button_id to route the callback."""
+        api_url = f"{GlobalClientInformation.API_URL}/channels/{self.id}/messages/{message_id}/buttons/{modal.button.id}/callback"
+
+        headers = {
+            "Authorization": GlobalClientInformation.TOKEN
+        }
+
+        data = {
+            "userId": str(user_id),
+            "title": modal.title,
+            "content": modal.content,
+            "buttonLabel": closebuttonlabel,
+            "components": [c.to_payload() for c in modal.body],
+        }
+
+        GlobalClientInformation.MODALS[modal.button.id] = modal
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(api_url, json=data, headers=headers) as response:
+                if response.status != 200:
+                    logger.error(f"Failed to send modal: {response.status}. Response Text: {await response.text()}")
+                    raise aiohttp.ClientResponseError(response.request_info, response.history)
+
+    @staticmethod
+    def get_channel(channel_id: int) -> 'Channel':
+        """Looks up a channel by ID from the server cache."""
+        for server in GlobalClientInformation.SERVERS.values():
+            if str(channel_id) in server.channels:
+                return server.channels[str(channel_id)]
+        raise ValueError(f"Channel {channel_id} not found in cache.")
+        
 
     # Private: Gets a raw string of messages.
     async def _get_messages_raw(self, amount: int) -> str:
@@ -139,10 +175,11 @@ class Channel():
         async with aiohttp.ClientSession() as session:
             async with session.get(api_endpoint, headers=headers) as response:
                 if response.status != 200:
-                    print(f"Failed to get messages from {self}. Status code: {response.status}. Response Text: {await response.text()}")
+                    logger.error(f"Failed to get messages from {self}. Status code: {response.status}. Response Text: {await response.text()}")
                     raise aiohttp.ClientResponseError(response.request_info, response.history)
                 
                 return await response.text()
+
 
     # Public: Gets a list of up to 50 message from the channel.
     async def get_messages(self, amount: int) -> list[Message]:
@@ -156,15 +193,16 @@ class Channel():
         
         return messages
     
+    
     # Public: Purge the channel of the specified amount of messages.
     async def purge(self, amount: int) -> None:
         """Purges the channel of the specified amount of messages."""
 
         if amount > 50: 
-            print(f"{ConsoleShortcuts.warn()} Attempted to purge an illegal amount '{amount}' of messages in {self}.")
+            logger.warn(f"Attempted to purge an illegal amount '{amount}' of messages in {self}.")
             amount = 50
         if amount <= 0: 
-            print(f"{ConsoleShortcuts.warn()} Attempted to purge an illegal amount '{amount}' of messages in {self}.")
+            logger.warn(f"Attempted to purge an illegal amount '{amount}' of messages in {self}.")
             return
 
         messages = await self.get_messages(amount)
@@ -194,13 +232,10 @@ class Channel():
         async with aiohttp.ClientSession() as session:
             async with session.post(api_url, headers=headers, json=data) as response:
                 if response.status != 200:
-                    print(f"{ConsoleShortcuts.error()} Failed to set permissions for {self}. Status code: {response.status}. Response Text: {await response.text()}")
+                    logger.error(f"Failed to set permissions for {self}. Status code: {response.status}. Response Text: {await response.text()}")
                     raise aiohttp.ClientResponseError(response.request_info, response.history)
                 return Channel.deserialize(await response.json())
         
-
-
-
 
     # Public Static: Deserialize a json string to a Channel object.
     @staticmethod

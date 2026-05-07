@@ -1,7 +1,9 @@
-from nerimity._enums import GlobalClientInformation, ConsoleShortcuts
+from nerimity._enums import GlobalClientInformation
+from nerimity.logger import logger
 from nerimity.roles import Role
 from nerimity.attachment import Attachment
 from nerimity.post import Post
+from nerimity.server import Server
 
 import requests
 import json
@@ -49,7 +51,7 @@ class Member():
 
         response = requests.post(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to follow {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to follow {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
 
     # Public: Unfollows the user.
@@ -66,7 +68,7 @@ class Member():
 
         response = requests.delete(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to follow {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to follow {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
     
     # Public: Sends a friend request to the specified user.
@@ -83,7 +85,7 @@ class Member():
 
         response = requests.post(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to send a friend request to {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to send a friend request to {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
 
     # Public: Removes the specified user from friends.
@@ -100,7 +102,7 @@ class Member():
 
         response = requests.post(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to send a friend request to {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to send a friend request to {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
     
     # Public: Sends a direct message to the member.
@@ -120,7 +122,7 @@ class Member():
 
         response = requests.post(api_endpoint, headers=headers, data=json.dumps(data))
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to send message to {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to send message to {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
 
     # Public Static: Deserialize a json string to a Member object.
@@ -146,7 +148,7 @@ class ServerMember(Member):
 
     server_id: The server ID that the member is a part of.
     joined_at: When the user joined the server.
-    role_ids: A list of IDs of the roles the user has.
+    roles: A list of Role objects the user has.
 
     kick(): Kicks the user from the server.
     ban(soft_ban): Bans the user from the server, a softban does not remove all messages send in the last 7 hours.
@@ -157,9 +159,16 @@ class ServerMember(Member):
 
     def __init__(self) -> None:
         super().__init__()
-        self.server_id : int        = None
-        self.joined_at : float      = None
-        self.role_ids  : list[int]  = None
+        self.server_id  : int       = None
+        self.joined_at  : float     = None
+        self._role_ids  : list      = []
+
+    @property
+    def roles(self) -> list['Role']:
+        server = GlobalClientInformation.SERVERS.get(str(self.server_id))
+        if server is None:
+            return []
+        return [server.roles[str(rid)] for rid in self._role_ids if str(rid) in server.roles]
 
     def kick(self) -> None:
         """Kicks the user from the server."""
@@ -173,7 +182,7 @@ class ServerMember(Member):
 
         response = requests.delete(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to kick {self} from {self.server_id}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to kick {self} from {self.server_id}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
         
     # Public: Bans the user from the server, a softban does not remove all messages send in the last 7 hours.
@@ -192,7 +201,7 @@ class ServerMember(Member):
 
         response = requests.post(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to ban {self} from {self.server_id}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to ban {self} from {self.server_id}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
 
     # Public: Unbans the user from the server.
@@ -208,8 +217,17 @@ class ServerMember(Member):
 
         response = requests.delete(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to ban {self} from {self.server_id}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to ban {self} from {self.server_id}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
+
+    @staticmethod
+    def get_member(user_id: int) -> 'ServerMember | None':
+        """Look up a ServerMember from the server cache by user ID."""
+        for server in GlobalClientInformation.SERVERS.values():
+            member = server.members.get(str(user_id))
+            if member is not None:
+                return member
+        return None
 
     # Public Static Overwrite: Deserialize a json string to a Member object.
     @staticmethod
@@ -225,7 +243,7 @@ class ServerMember(Member):
         new_member.badges           = str(json["user"]["badges"])
         new_member.server_id        = int(json["serverId"])
         new_member.joined_at        = float(json["joinedAt"])
-        new_member.role_ids         = list(json["roleIds"])
+        new_member._role_ids        = json["roleIds"]
 
         return new_member
 
@@ -266,7 +284,7 @@ class ClientMember(Member):
 
         response = requests.post(api_endpoint, headers=headers, data=json.dumps(data))
         if response.status_code != 200:
-            print(f"Failed to set presence. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to set presence. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
         
         return response.text
@@ -288,7 +306,7 @@ class ClientMember(Member):
         response = requests.post(api_endpoint, headers=headers, data=data)
         pass
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to send message to {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to send message to {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
 
     # Public: Returns the entire feed the bot currently has.

@@ -2,6 +2,7 @@ from nerimity.attachment import Attachment
 from nerimity.channel import Channel
 from nerimity.member import ServerMember
 from nerimity.message import Message
+from nerimity.modal import Modal
 from nerimity.server import Server
 from nerimity._enums import GlobalClientInformation
 from nerimity.button import Button
@@ -26,7 +27,7 @@ class Context():
         self.author : ServerMember  = None
         self.channel: Channel       = message.channel
         self.server : Server        = None
-        self.embed  : None          = None # TODO: Add 
+        self.embed  : None          = None # TODO: Add embed functionality
 
         for server in GlobalClientInformation.SERVERS.values():
             if str(message.channel_id) in server.channels.keys():
@@ -38,7 +39,11 @@ class Context():
     async def send(self, response: str, attachment: Attachment | None = None, buttons: list[Button] = None, embed: Embed | None = None) -> Message:
         """Sends a message to the channel the command was sent to."""
         return await self.channel.send_message(response, attachment, buttons, embed)
-
+    
+    async def send_embed(self, embed: Embed) -> Message:
+        """Sends an embed to the channel the command was sent to."""
+        return await self.channel.send_message(embed=embed)
+    
     # Public: Removes the original message.
     async def remove(self) -> None:
         """Removes the original message."""

@@ -1,4 +1,5 @@
-from nerimity._enums import GlobalClientInformation, ConsoleShortcuts
+from nerimity._enums import GlobalClientInformation
+from nerimity.logger import logger
 from nerimity.invite import Invite
 from nerimity.member import Member, ServerMember
 from nerimity.channel import Channel
@@ -71,7 +72,7 @@ class Server():
 
         response = requests.get(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to get ban list {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to get ban list {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
 
         list_raw = json.loads(response.text)
@@ -102,7 +103,7 @@ class Server():
 
         response = requests.get(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to get ban list {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to get ban list {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
 
         server_raw = json.loads(response.content)
@@ -145,7 +146,7 @@ class Server():
 
         response = requests.post(api_endpoint, headers=headers, data=json.dumps(data))
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to update a member for {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to update a member for {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
 
 
@@ -162,7 +163,7 @@ class Server():
 
         response = requests.post(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to create a role for {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to create a role for {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
         return Role.deserialize(json.loads(response.content))
 
@@ -179,7 +180,7 @@ class Server():
 
         response = requests.delete(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to delete a role for {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to delete a role for {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
 
     # Public: Updates the specified role with new information.
@@ -200,7 +201,7 @@ class Server():
 
         response = requests.post(api_endpoint, headers=headers, data=json.dumps(data))
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to update a role for {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to update a role for {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
         return Role.deserialize(json.loads(response.content))
 
@@ -224,7 +225,7 @@ class Server():
 
         response = requests.post(api_endpoint, headers=headers, data=json.dumps(data))
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to create a channel for {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to create a channel for {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
         return Channel.deserialize(json.loads(response.content))
 
@@ -241,7 +242,7 @@ class Server():
 
         response = requests.delete(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to delete a channel from {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to delete a channel from {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
 
     # Public: Updates the specified channel with new information.
@@ -263,7 +264,7 @@ class Server():
 
         response = requests.post(api_endpoint, headers=headers, data=json.dumps(data))
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to update a channel for {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to update a channel for {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
         
         if (content != None):
@@ -273,13 +274,13 @@ class Server():
                 response = requests.delete(api_endpoint, headers=headers)
 
                 if response.status_code != 200:
-                    print(f"{ConsoleShortcuts.error()} Failed to update a channel for {self}. Status code: {response.status_code}. Response Text: {response.text}")
+                    logger.error(f"Failed to update a channel for {self}. Status code: {response.status_code}. Response Text: {response.text}")
                     raise requests.RequestException
             else:
                 response = requests.put(api_endpoint, headers=headers, data=json.dumps({"content": content}))
 
                 if response.status_code != 200:
-                    print(f"{ConsoleShortcuts.error()} Failed to update a channel for {self}. Status code: {response.status_code}. Response Text: {response.text}")
+                    logger.error(f"Failed to update a channel for {self}. Status code: {response.status_code}. Response Text: {response.text}")
                     raise requests.RequestException
 
 
@@ -298,7 +299,7 @@ class Server():
 
         response = requests.post(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to create an invite for {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to create an invite for {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException(response.status_code)
         
         invite_raw = json.loads(response.content)
@@ -327,7 +328,7 @@ class Server():
 
         response = requests.delete(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to delete an invite form {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to delete an invite form {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException(response.status_code)
     
     

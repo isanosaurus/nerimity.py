@@ -1,4 +1,5 @@
-from nerimity._enums import GlobalClientInformation, ConsoleShortcuts
+from nerimity._enums import GlobalClientInformation
+from nerimity.logger import logger
 import aiohttp
 import requests
 import json
@@ -53,7 +54,7 @@ class Role():
 
         response = requests.post(api_endpoint, headers=headers, data=json.dumps(data))
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to update a role for {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to update a role for {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
         response_json = response.json()
         response_json["id"] = self.id
@@ -84,7 +85,7 @@ class Role():
         async with aiohttp.ClientSession() as session:
             async with session.post(api_endpoint, headers=headers, data=json.dumps(data)) as response:
                 if response.status != 200:
-                    print(f"{ConsoleShortcuts.error()} Failed to set permissions for {self}. Status code: {response.status}. Response Text: {await response.text()}")
+                    logger.error(f"Failed to set permissions for {self}. Status code: {response.status}. Response Text: {await response.text()}")
                     raise requests.RequestException
                 
                 response_json = await response.json()

@@ -1,4 +1,5 @@
-from nerimity._enums import GlobalClientInformation, ConsoleShortcuts
+from nerimity._enums import GlobalClientInformation
+from nerimity.logger import logger
 
 import requests
 import json
@@ -68,7 +69,7 @@ class Post():
         }
         response = requests.post(api_endpoint, headers=headers, data=json.dumps(data))
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to create a post. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to create a post. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
 
         return Post.deserialize(response.json())
@@ -87,7 +88,7 @@ class Post():
 
         response = requests.delete(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to delete {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to delete {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
 
     # Public: Gets the comment as a list of Posts.
@@ -103,7 +104,7 @@ class Post():
 
         response = requests.get(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to get comments for {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to get comments for {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
     
     # Public: Likes the post.
@@ -121,7 +122,7 @@ class Post():
 
         response = requests.post(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to like {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to like {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
     
     # Public: Unlikes the post.
@@ -139,7 +140,7 @@ class Post():
 
         response = requests.post(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to like {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to like {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
 
     # Public: Creates a comment to the post.
@@ -159,7 +160,7 @@ class Post():
 
         response = requests.post(api_endpoint, headers=headers, data=json.dumps(data))
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to create a post. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to create a post. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
 
     # Public Static: Deserialize a json string to a Post object.

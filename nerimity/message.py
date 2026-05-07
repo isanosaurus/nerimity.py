@@ -3,7 +3,8 @@ from ast import Add
 from nerimity.member import Member
 from nerimity.embed import Embed
 from nerimity.attachment import Attachment
-from nerimity._enums import EmbedTypes, GlobalClientInformation, ConsoleShortcuts
+from nerimity._enums import EmbedTypes, GlobalClientInformation
+from nerimity.logger import logger
 
 import requests
 import json
@@ -62,7 +63,7 @@ class Message():
 
         response = requests.delete(api_endpoint, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to delete {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to delete {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
     
     # Public: Edits this message to the new message content.
@@ -81,7 +82,7 @@ class Message():
 
         response = requests.patch(api_endpoint, headers=headers, data=json.dumps(data))
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to edit {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to edit {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
         
     # Public: Reacts to the message with the specified emoji.
@@ -100,7 +101,7 @@ class Message():
 
         response = requests.post(api_endpoint, headers=headers, data=json.dumps(data))
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to add '{emoji}' to {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to add '{emoji}' to {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
 
     # Public: Unreacts the message with the specified emoji.
@@ -119,7 +120,7 @@ class Message():
 
         response = requests.post(api_endpoint, headers=headers, data=json.dumps(data))
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to add {emoji} to {self}. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to add {emoji} to {self}. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
 
     # Public Static: Deserialize a json string to a Message object.
@@ -135,7 +136,7 @@ class Message():
         new_message.author_id       = int(json["createdById"])
         new_message.edited_at       = float(json["editedAt"])                                           if json["editedAt"]       is not None else None
         new_message.created_at      = float(json["createdAt"])
-        embed = Embed.construct(json["embed"], type=EmbedTypes.STANDARD) if json["embed"] is not None else (Embed.construct(json["htmlEmbed"], type=EmbedTypes.HTML) if json["htmlEmbed"] is not None else None)
+        embed = Embed.construct(json["embed"], type=EmbedTypes.STANDARD) if json.get("embed") is not None else (Embed.construct(json["htmlEmbed"], type=EmbedTypes.HTML) if json.get("htmlEmbed") is not None else None)
         new_message.embed           = embed
         new_message.mentions        = list(json["mentions"])                                            if json["mentions"]       is not None else []
         new_message.quoted_messages = list(json["quotedMessages"])                                      if json["quotedMessages"] is not None else []

@@ -1,5 +1,6 @@
 import requests
-from nerimity._enums import ConsoleShortcuts, GlobalClientInformation
+from nerimity._enums import GlobalClientInformation
+from nerimity.logger import logger
 
 class SlashCommand():
     """A class to represent a slash command."""
@@ -34,6 +35,6 @@ class SlashCommand():
         
         response = requests.post(api_url, json=data, headers=headers)
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to register slash command: {response.text}")
+            logger.error(f"Failed to register slash command: {response.text}")
             raise requests.RequestException
-        print(f"{ConsoleShortcuts.ok()} Registered {len(commands)} slash commands.")
+        logger.ok(f"Registered {len(commands)} slash commands.")

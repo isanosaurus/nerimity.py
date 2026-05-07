@@ -1,5 +1,6 @@
 from nerimity.message import Message
-from nerimity._enums import GlobalClientInformation, ConsoleShortcuts
+from nerimity._enums import GlobalClientInformation
+from nerimity.logger import logger
 from nerimity.context import Context
 from nerimity.channel import Channel
 from nerimity.member import Member, ServerMember, ClientMember
@@ -19,7 +20,8 @@ import time
 import re
 import functools
 from typing import Callable, List
-import traceback
+
+__LOG_WEBSOCKET_EVENTS__ = False
 
 def camel_to_snake(camel_case):
     snake_case = re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', camel_case)
@@ -63,10 +65,10 @@ class Client:
         self.pending_friends: dict[str, Member] = {}
 
         GlobalClientInformation.TOKEN = token
-    
+
     def change_presence(self, status: Status.StatusType.type = None, text: str = None) -> None:
         Status.change_presence(status=status, text=text)
-    
+
     def get_user(self, user_id: str, cache_fallback: bool = True) -> Member:
         """Get a user by their ID.
         ## Parameters
@@ -77,16 +79,15 @@ class Client:
 
         response = requests.get(api_url, headers={"Authorization": self.token})
         if response.status_code == 200:
-            print(response.json())
             return Member.deserialize(response.json()["user"])
         elif cache_fallback:
             for server in GlobalClientInformation.SERVERS.values():
                 if str(user_id) in server.members.keys():
                     return server.members[str(user_id)]
             else:
-                print(f"{ConsoleShortcuts.error()} Error getting a user: {response.status_code} - {response.text}")
+                logger.error(f"Error getting a user: {response.status_code} - {response.text}")
         else:
-            print(f"{ConsoleShortcuts.error()} Error getting a user (cache fallback disabled): {response.status_code} - {response.text}")
+            logger.error(f"Error getting a user (cache fallback disabled): {response.status_code} - {response.text}")
 
     def command(self, name: str = None, aliases: list[str] = None):
         """Decorator to register a prefixed command."""
@@ -110,7 +111,7 @@ class Client:
                     # Handle None result explicitly
                     return None
                 return result
-            
+
             wrapped_func = async_wrapper if asyncio.iscoroutinefunction(func) else func
             self.commands[command_name] = wrapped_func
 
@@ -158,9 +159,8 @@ class Client:
                     args += f"<{arg}> "
             slashcommand.args = args.strip()
             return wrapped_func
-        
-        return decorator
 
+        return decorator
 
 
     # Public: Decorator to register to an event listener.
@@ -182,22 +182,23 @@ class Client:
         - on_channel_updated: Triggered when the bot sees a channel being updated in a server.
         - on_channel_deleted: Triggered when the bot sees a channel being deleted in a server.
         - on_channel_created: Triggered when the bot sees a channel being created in a server.
+        - on_button_clicked: Triggered when the bot sees a button being clicked. Passes a ButtonInteraction object.
         - on_server_updated: Triggered when the bot sees a server being updated.
         - on_member_join: Triggered when the bot sees a member join a server.
         - on_member_left: Triggered when the bot sees a member leave a server.
         - on_server_joined: Triggered when the bot gets add to a server.
         - on_server_left: Triggered when the bot gets removed from a server.
-        - on_friend_request_sent: *Unkown*
+        - on_friend_request_sent: *Unknown*
         - on_friend_request_pending: Triggered when there is a pending friend request to the bot.
-        - on_friend_request_accepted: Triggered when a friend request is accepted. 
+        - on_friend_request_accepted: Triggered when a friend request is accepted.
         - on_friend_removed: Triggered when someone removes the bot as a friend and vice versa.
         - on_minute_pulse: Triggered each minute. Does not pass anything.
         - on_hour_pulse: Triggered each hour. Does not pass anything.
         """
         if event not in self.event_listeners.keys():
-            print((f"{ConsoleShortcuts.error()} Invalid event type: {event}. Use an existing event or see the documentation."))
+            logger.error(f"Invalid event type: {event}. Use an existing event or see the documentation.")
             raise ValueError(event)
-        
+
         def decorator(func):
             self.event_listeners[event].append(func)
             return func
@@ -210,7 +211,7 @@ class Client:
 
             for listener in self.event_listeners['on_minute_pulse']:    # on_minute_pulse
                 await asyncio.create_task(listener.__call__())
-    
+
     # Private: Triggered at the start of each hour.
     async def _hour_pulse(self) -> None:
         while True:
@@ -218,7 +219,7 @@ class Client:
 
             for listener in self.event_listeners['on_hour_pulse']:      # on_hour_pulse
                 await asyncio.create_task(listener.__call__())
-    
+
     # Private: Processes Commands and execute them if they exist.
     async def _process_commands(self, message: Message) -> None:
         self._process_slash_commands(message)
@@ -232,13 +233,13 @@ class Client:
 
             arguments = message.content.split(' ')[1:]
             asyncio.create_task(self.commands[command].__call__(ctx, *arguments))
-    
+
     def _process_slash_commands(self, message: Message) -> None:
         if not message.content.startswith("/") or ":" not in message.content: # there may be a better way to do this, but it works ¯\_(ツ)_/¯
             return
-        
-        print(f"{ConsoleShortcuts.log()} Slash command detected: {message.content}")
-        
+
+        logger.log(f"Slash command detected: {message.content}")
+
         command = message.content.split(":")[0].removeprefix("/")
         if command in [_command.name for _command in self.slash_commands.keys()]:
             ctx = Context(message)
@@ -246,62 +247,79 @@ class Client:
             arguments = message.content.split(' ')[1:]
             command = [key for key, value in self.slash_commands.items() if value.__name__ == command][0]
             asyncio.create_task(self.slash_commands[command].__call__(ctx, *arguments))
-         
+
 
     # Private: Listens to the webhook and calls commands/listeners.
     async def _listen_webhook(self, websocket: 'websockets.legacy.client.WebSocketClientProtocol') -> None:
-        print(f"{ConsoleShortcuts.ok()} The bot is now listening to incoming connections.")
+        logger.ok("The bot is now listening to incoming connections.")
         while True:
             message_raw: str = await websocket.recv()
+            if __LOG_WEBSOCKET_EVENTS__:
+                logger.debug(f"Received websocket message: {message_raw}")
 
             # Ping-Pong
             if message_raw == "2":
                 await websocket.send("3")
 
             elif message_raw.startswith("42[\"message:updated"):
-                    
+
                     for listener in self.event_listeners["on_message_updated"]:
                         await asyncio.create_task(listener.__call__(Message.deserialize(json.loads(message_raw.removeprefix("42"))[1]["message"])))
             elif message_raw.startswith("42[\"message:created"):
-                    
+
                     message = Message.deserialize(json.loads(message_raw.removeprefix("42"))[1]["message"])
                     await self._process_commands(message)
-                    
+
                     for listener in self.event_listeners["on_message_create"]:
                         await asyncio.create_task(listener.__call__(Message.deserialize(json.loads(message_raw.removeprefix("42"))[1]["message"])))
             elif message_raw.startswith("42[\"message:deleted"):
-                    
+
                     for listener in self.event_listeners["on_message_deleted"]:
                         await asyncio.create_task(listener.__call__(Message.deserialize(json.loads(message_raw.removeprefix("42"))[1]["message"])))
             elif message_raw.startswith("42[\"message:button_clicked"):
+                # 42["message:button_clicked",{"messageId":"1766591511040016384","channelId":"1616839983556112384",
+                # "buttonId":"bpopuptestbutton", "userId":"1528014429885734913","data":{"country_selector":"at"},"type":"modal_click"}]
                 message = json.loads(message_raw.removeprefix("42"))[1]
                 client_buttons = GlobalClientInformation.BUTTONS
 
                 for button in client_buttons:
                     if button.id == message["buttonId"]:
-                        button_interaction = ButtonInteraction.deserialize(
+                        if message["type"] == "modal_click":
+                            modal = GlobalClientInformation.MODALS.get(message["buttonId"])
+                            if modal is not None:
+                                button_interaction = ButtonInteraction.deserialize(
+                                    {
+                                        "messageId": message["messageId"],
+                                        "channelId": message["channelId"],
+                                        "button": button,
+                                        "data": message["data"],
+                                        "userId": message["userId"]
+                                    }
+                                )
+                                await modal.callback(button_interaction)
+                            break
+                        elif message["type"] == "button_click":
+                            button_interaction = ButtonInteraction.deserialize(
                                 {
                                     "messageId": message["messageId"],
                                     "channelId": message["channelId"],
                                     "button": button,
                                     "userId": message["userId"]
                                 }
-                    	    )
-                        await button.callback(button_interaction)
-                        break
-                else:
-                    pass
+                            )
+                            await button.callback(button_interaction)
+                            break
 
             elif message_raw.startswith("42[\"message:reaction_added"):
-                    
+
                     for listener in self.event_listeners["on_reaction_add"]:
                         await asyncio.create_task(listener.__call__(json.loads(message_raw.removeprefix("42"))[1]))
             elif message_raw.startswith("42[\"user:presence_update"):
-                    
+
                     for listener in self.event_listeners["on_presence_change"]:
                         await asyncio.create_task(listener.__call__(json.loads(message_raw.removeprefix("42"))[1]))
             elif message_raw.startswith("42[\"user:server_settings_update"):
-                    
+
                     for listener in self.event_listeners["on_server_updated"]:
                         await asyncio.create_task(listener.__call__(json.loads(message_raw.removeprefix("42"))[1]))
             elif message_raw.startswith("42[\"server:role_updated"):
@@ -310,7 +328,7 @@ class Client:
                     role = self.servers[message["serverId"]].roles[message["roleId"]]
                     for entry in message["updated"]:
                         setattr(role, camel_to_snake(entry), message["updated"][entry])
-                    
+
                     for listener in self.event_listeners["on_role_updated"]:
                         await asyncio.create_task(listener.__call__(json.loads(message_raw.removeprefix("42"))[1]))
             elif message_raw.startswith("42[\"server:role_created"):
@@ -324,7 +342,7 @@ class Client:
 
                     message = json.loads(message_raw.removeprefix("42"))[1]
                     del self.servers[message["serverId"]].roles[message["roleId"]]
-                    
+
                     for listener in self.event_listeners["on_role_deleted"]:
                         await asyncio.create_task(listener.__call__(json.loads(message_raw.removeprefix("42"))[1]))
             elif message_raw.startswith("42[\"server:member_updated"):
@@ -333,45 +351,45 @@ class Client:
                     member = self.servers[message["serverId"]].members[message["userId"]]
                     for entry in message["updated"]:
                         setattr(member, camel_to_snake(entry), message["updated"][entry])
-                    
+
                     for listener in self.event_listeners["on_member_updated"]:
                         await asyncio.create_task(listener.__call__(json.loads(message_raw.removeprefix("42"))[1]))
             elif message_raw.startswith("42[\"server:member_joined"):
-                    
+
                     message = json.loads(message_raw.removeprefix("42"))[1]
                     if message["serverId"] in self.servers.keys():
                         self.servers[message["serverId"]].members[message["member"]["userId"]] = ServerMember.deserialize(message["member"])
-                    
+
                     for listener in self.event_listeners["on_member_join"]:
                         await asyncio.create_task(listener.__call__(json.loads(message_raw.removeprefix("42"))[1]))
             elif message_raw.startswith("42[\"server:member_left"):
-                    
+
                     message = json.loads(message_raw.removeprefix("42"))[1]
                     del self.servers[message["serverId"]].members[message["userId"]]
-                    
+
                     for listener in self.event_listeners["on_member_left"]:
                         await asyncio.create_task(listener.__call__(json.loads(message_raw.removeprefix("42"))[1]))
             elif message_raw.startswith("42[\"server:channel_updated"):
-                    
+
                     message = json.loads(message_raw.removeprefix("42"))[1]
                     channel = self.servers[message["serverId"]].channels[message["channelId"]]
                     for entry in message["updated"]:
                         setattr(channel, camel_to_snake(entry), message["updated"][entry])
-                    
+
                     for listener in self.event_listeners["on_channel_updated"]:
                         await asyncio.create_task(listener.__call__(json.loads(message_raw.removeprefix("42"))[1]))
             elif message_raw.startswith("42[\"server:channel_created"):
-                    
+
                     message = json.loads(message_raw.removeprefix("42"))[1]
                     self.servers[message["serverId"]].channels[message["channel"]["id"]] = Channel.deserialize(message["channel"])
-                    
+
                     for listener in self.event_listeners["on_channel_created"]:
                         await asyncio.create_task(listener.__call__(json.loads(message_raw.removeprefix("42"))[1]))
             elif message_raw.startswith("42[\"server:channel_deleted"):
-                    
+
                     message = json.loads(message_raw.removeprefix("42"))[1]
                     del self.servers[message["serverId"]].channels[message["channelId"]]
-                    
+
                     for listener in self.event_listeners["on_channel_deleted"]:
                         await asyncio.create_task(listener.__call__(json.loads(message_raw.removeprefix("42"))[1]))
             elif message_raw.startswith("42[\"server:joined"):
@@ -389,13 +407,13 @@ class Client:
                     for role_raw in message["roles"]:
                         role = Role.deserialize(role_raw)
                         self.servers[f"{role.server_id}"].roles[f"{role.id}"] = role
-                    
+
                     for listener in self.event_listeners["on_server_joined"]:
                         await asyncio.create_task(listener.__call__(json.loads(message_raw.removeprefix("42"))[1]))
             elif message_raw.startswith("42[\"server:left"):
 
                     message = json.loads(message_raw.removeprefix("42"))[1]
-                    del self.servers[message["serverId"]] 
+                    del self.servers[message["serverId"]]
 
                     for listener in self.event_listeners["on_server_left"]:
                         await asyncio.create_task(listener.__call__(json.loads(message_raw.removeprefix("42"))[1]))
@@ -419,7 +437,7 @@ class Client:
                         self.account.friends[f"{message['friendId']}"] = self.pending_friends[f"{message['friendId']}"]
                         del self.pending_friends[f"{message['friendId']}"]
                     except KeyError:
-                        print(f"{ConsoleShortcuts.error()} There was an error while trying to accept a friend request from {message['friendId']}. This likely happened due to a bot restart. It is advisable to accept/deny friend request as they come in, not afterwards as a friend object cannot be loaded if it does not have a Member object in memory.")
+                        logger.error(f"There was an error while trying to accept a friend request from {message['friendId']}. This likely happened due to a bot restart. It is advisable to accept/deny friend request as they come in, not afterwards as a friend object cannot be loaded if it does not have a Member object in memory.")
 
                     for listener in self.event_listeners["on_friend_request_accepted"]:
                         await asyncio.create_task(listener.__call__(json.loads(message_raw.removeprefix("42"))[1]))
@@ -437,8 +455,8 @@ class Client:
             elif message_raw.startswith("42[\"user:auth_queue_position"):
 
                 message = json.loads(message_raw.removeprefix("42"))[1]
-                print(f"{ConsoleShortcuts.warn()} Authentication queue position: {message['pos']}")
-                 
+                logger.warn(f"Authentication queue position: {message['pos']}")
+
             elif message_raw.startswith("0{\"sid"):
                 await websocket.send("40")
 
@@ -448,28 +466,32 @@ class Client:
                 message: str = await websocket.recv()
                 del message
             else:
-                print(f"{ConsoleShortcuts.warn()} Unknown event occurred with content:{message_raw}")
-            
+                logger.warn(f"Unknown event occurred with content:{message_raw}")
+
             GlobalClientInformation.SERVERS = self.servers
 
     # Public: Starts the bot. Any code below the start will not be executed.
-    def run(self, debug_mode: bool=False, restart_always: bool=False) -> None:
+    def run(self, debug_mode: bool=False, restart_always: bool=False, __log_websocket_events: bool=False) -> None:
         """Starts the bot. Any code below the start will not be executed."""
+        global __LOG_WEBSOCKET_EVENTS__
+        if __log_websocket_events:
+            logger.warn("Websocket event logging is enabled. This may cause performance issues and should only be used for debugging.")
+            __LOG_WEBSOCKET_EVENTS__ = True
         if not GlobalClientInformation.WEBSOCKET_URL:
-            print(f"{ConsoleShortcuts.error()} WEBSOCKET_URL is not set. Please set it to the correct value.")
+            logger.error("WEBSOCKET_URL is not set. Please set it to the correct value.")
             return
         if not GlobalClientInformation.API_URL:
-            print(f"{ConsoleShortcuts.error()} API_URL is not set. Please set it to the correct value.")
+            logger.error("API_URL is not set. Please set it to the correct value.")
             return
         if not GlobalClientInformation.CDN_URL:
-            print(f"{ConsoleShortcuts.error()} CDN_URL is not set. Please set it to the correct value.")
+            logger.error("CDN_URL is not set. Please set it to the correct value.")
             return
         if not GlobalClientInformation.WEBSOCKET_URL == "wss://nerimity.com":
-            print(f"{ConsoleShortcuts.warn()} Custom websocket URL: '{GlobalClientInformation.WEBSOCKET_URL}'. Proceed with caution.")
+            logger.warn(f"Custom websocket URL: '{GlobalClientInformation.WEBSOCKET_URL}'. Proceed with caution.")
         if not GlobalClientInformation.API_URL == "https://nerimity.com/api":
-            print(f"{ConsoleShortcuts.warn()} Custom API URL: '{GlobalClientInformation.API_URL}'. Proceed with caution.")
+            logger.warn(f"Custom API URL: '{GlobalClientInformation.API_URL}'. Proceed with caution.")
         if not GlobalClientInformation.CDN_URL == "https://cdn.nerimity.com":
-            print(f"{ConsoleShortcuts.warn()} Custom CDN URL: '{GlobalClientInformation.CDN_URL}'. Proceed with caution.")
+            logger.warn(f"Custom CDN URL: '{GlobalClientInformation.CDN_URL}'. Proceed with caution.")
         async def main():
             first_start = True
 
@@ -481,7 +503,7 @@ class Client:
                         # We only want to get the data the first time so we dont overwrite on restart
                         if first_start:
                             first_start = False
-                            print(f"{ConsoleShortcuts.log()} Connecting to Nerimity and starting authentication process.")
+                            logger.log("Connecting to Nerimity and starting authentication process.")
 
                             message: str = await websocket.recv()
                             await websocket.send("40")
@@ -490,17 +512,17 @@ class Client:
                             await websocket.send(f"42[\"user:authenticate\",{{\"token\":\"{GlobalClientInformation.TOKEN}\"}}]")
 
                             message: str = await websocket.recv()
-                            print(f"{ConsoleShortcuts.ok()} Authentication process finished successfully!")
+                            logger.ok("Authentication process finished successfully!")
 
                             # Load everything they send over to the servers dict
                             message_auth = json.loads(message.removeprefix("42"))[1]
                             if message_auth.get("pos") != 0:
-                                print(f"{ConsoleShortcuts.warn()} Authentication queue position: {message_auth.get('pos')}")
+                                logger.warn(f"Authentication queue position: {message_auth.get('pos')}")
                             while message_auth.get("pos") and message_auth.get("pos") != 0:
                                 message = await websocket.recv()
                                 if message.startswith("42[\"user:auth_queue_position"):
                                     message_auth = json.loads(message.removeprefix("42"))[1]
-                                    print(f"{ConsoleShortcuts.warn()} Authentication queue position: {message_auth.get('pos')}")
+                                    logger.warn(f"Authentication queue position: {message_auth.get('pos')}")
                             self.account = ClientMember.deserialize(message_auth["user"])
 
                             for server_raw in message_auth["servers"]:
@@ -521,7 +543,7 @@ class Client:
                             for friend_raw in message_auth["friends"]:
                                 friend = Member.deserialize(friend_raw["recipient"])
                                 self.account.friends[f"{friend.id}"] = friend
-                            
+
 
                             GlobalClientInformation.SERVERS = self.servers
 
@@ -529,9 +551,9 @@ class Client:
                             for listener in self.event_listeners["on_ready"]:
                                 await asyncio.create_task(listener.__call__(message_auth))
                                 if self.slash_commands != {}:
-                                    print(f"{ConsoleShortcuts.log()} Registering slash commands.")
+                                    logger.log("Registering slash commands.")
                                     SlashCommand.register(self.slash_commands)
-                                     
+
 
                             # on_hour_pulse & on_minute_pulse
                             if self.event_listeners["on_minute_pulse"] != {}: asyncio.create_task(self._minute_pulse())
@@ -541,35 +563,33 @@ class Client:
 
                     # For some reason we cant import the actual class so we need to look at the __repr__() method instead
                     if e.__repr__().startswith('ConnectionClosed'):
-                        print(f"{ConsoleShortcuts.warn()} Lost connection, attempting to reconnect.")
+                        logger.warn("Lost connection, attempting to reconnect.")
                     else:
                         raise e
 
         # Create and run an event loop
         if not debug_mode:
             if restart_always:
-                print(f"{ConsoleShortcuts.log()} Launching in restart always mode. Bot will restart if it crashes.")
+                logger.log("Launching in restart always mode. Bot will restart if it crashes.")
                 while True:
                     try:
                         asyncio.run(main())
                     except Exception as e:
-                        print(f"{ConsoleShortcuts.error()} Bot crashed with error: {e}")
-                        traceback.print_exc()
+                        logger.error(f"Bot crashed with error: {e}", exc=e)
             else:
                 last_crash = 0
                 while True:
                     try:
                         asyncio.run(main())
                     except Exception as e:
-                        print(f"{ConsoleShortcuts.error()} Bot crashed with error: {e}")
-                        traceback.print_exc()
-                        
-                    
+                        logger.error(f"Bot crashed with error: {e}", exc=e)
+
+
                     if time.time() - last_crash < 60:
-                        print(f"{ConsoleShortcuts.error()} Last crash happened less than a minute ago. Shutting down.")
+                        logger.error("Last crash happened less than a minute ago. Shutting down.")
                         exit()
-                    
+
                     last_crash = time.time()
         else:
-            print(f"{ConsoleShortcuts.log()} Launching in debug mode, any uncaught exception will crash the bot.")
+            logger.log("Launching in debug mode, any uncaught exception will crash the bot.")
             asyncio.run(main())

@@ -1,6 +1,6 @@
 import nerimity
 from nerimity._enums import GlobalClientInformation
-from nerimity._enums import ConsoleShortcuts
+from nerimity.logger import logger
 import requests
 import json
 
@@ -51,7 +51,7 @@ class Status():
         
         response = requests.post(api_endpoint, headers=headers, data=json.dumps(data))
         if response.status_code != 200:
-            print(f"{ConsoleShortcuts.error()} Failed to change presence. Status code: {response.status_code}. Response Text: {response.text}")
+            logger.error(f"Failed to change presence. Status code: {response.status_code}. Response Text: {response.text}")
             raise requests.RequestException
 
 

@@ -9,7 +9,7 @@ See the features that the framework currently supports.
 - **[Installation](#installation)** <br>
 Guide on how to install nerimity.py.
 - **[Notice: Prefix Command and Slash Commands](#notice-prefix-commands-and-slash-command)**<br>
-Description of what prefix and slash commands are and what differneces there are between them.
+Description of what prefix and slash commands are and what differences there are between them.
 - **[Example Bot](#example-commands-bot)** <br>
 An example bot you can directly use.
 - **[Use-case-examples](#use-case-examples)** <br>
@@ -17,7 +17,8 @@ Many various examples on how to use specific functions.
 
 # Current features
 #### Command Handling:
-- Define and register commands using the @client.command decorator.
+- Define and register prefix commands using the `@client.command` decorator.
+- Define and register slash commands using the `@client.slash_command` decorator.
 - Execute commands with parameters.
 
 ### Register event listeners using the @client.listen decorator.
@@ -50,14 +51,18 @@ Handle various events such as:
 
 #### Message Handling:
 - Send messages to channels.
-    - add attachments
-    - add buttons with custom callback
+    - Add file attachments.
+    - Add buttons with custom callbacks.
+    - Add HTML embeds.
 - Edit and delete messages.
 - React and unreact to messages.
 
 #### Attachment Handling:
 - Create and upload attachments.
 - Deserialize attachments from JSON.
+
+#### Embed Handling:
+- Send HTML embeds (raw HTML string).
 
 #### Channel Management:
 - Update channel information.
@@ -97,9 +102,14 @@ Handle various events such as:
 #### Status Management:
 - Change the presence status of the bot.
 
-#### Button Interaction:
-- Handle button interactions and send popups.
-- Deserialize button interactions from JSON.
+#### Button & Modal Interaction:
+- Send messages with interactive buttons.
+- Register async callbacks on buttons.
+- Open modal forms from a button callback containing:
+  - Text inputs (`ModalComponentTypes.INPUT`)
+  - Static text / labels (`ModalComponentTypes.TEXT`)
+  - Dropdown selects (`ModalComponentTypes.DROPDOWN`) with `ModalDropdownOption` items.
+- Register an async submit callback on a modal; submitted values arrive as `interaction.data` (a `dict` keyed by each component's `customId`).
 
 #### Permissions:
 - Manage user and role permissions.
@@ -168,25 +178,78 @@ If you encounter any issues while using the framework feel free to open an [Issu
 @client.command(name="testattachment")
 async def testattachment(ctx: nerimity.Context):
     file = await nerimity.Attachment.construct("test.png").upload()
-    result = await ctx.send("Test", attachment=file)
+    await ctx.send("Test", attachment=file)
 ```
 
 ### Sending buttons with messages
 ```py
 @client.command(name="testbutton")
 async def testbutton(ctx: nerimity.Context):
-    popup_button = nerimity.Button.construct(label="Popup!", id="popuptestbutton", alert=True)
-    async def popup_callback(buttoninteraction: nerimity.ButtonInteraction):
-        user = client.get_user(buttoninteraction.userId)
-        buttoninteraction.send_popup("Test", f"Hello, {user.username}!")
-    await popup_button.set_callback(popup_callback)
+    button = nerimity.Button(label="Say hi", id="sayhibutton")
 
-    message_button = nerimity.Button.construct(label="Message!", id="messagetestbutton")
-    async def message_callback(buttoninteraction: nerimity.ButtonInteraction):
-        user = client.get_user(buttoninteraction.userId)
-        await ctx.send(f"Hello, {user.username}!")
-    await message_button.set_callback(message_callback)
-    await ctx.send("Test", buttons=[message_button, popup_button])
+    async def on_click(interaction: nerimity.ButtonInteraction):
+        user = client.get_user(interaction.userId)
+        await interaction.send_message(f"Hello, {user.username}!")
+
+    button.set_callback(on_click)
+    await ctx.send("Click the button:", buttons=[button])
+```
+
+### Sending a Modal (form) from a button
+Modals must be opened from inside a button callback. The submit callback receives `interaction.data` — a `dict` keyed by each component's `customId`.
+```py
+@client.command(name="testbutton")
+async def testbutton(ctx: nerimity.Context):
+    # Button that opens a modal form
+    form_button = nerimity.Button(label="Open Form", id="popuptestbutton")
+
+    async def button_clicked(interaction: nerimity.ButtonInteraction):
+        modal = nerimity.Modal(
+            title="Tell us about yourself",
+            button=form_button,
+            closebuttonlabel="Submit :3",
+            content=f"Hi {ctx.author.username}! Please fill out the form below.",
+            body=[
+                nerimity.ModalComponent(
+                    type=nerimity.ModalComponentTypes.INPUT,
+                    customId="name",
+                    label="Your name",
+                    placeholder="Enter your name...",
+                ),
+                nerimity.ModalComponent(
+                    type=nerimity.ModalComponentTypes.TEXT,
+                    customId="bio",
+                    content="Great! Now please select your continent from the dropdown below.",
+                ),
+                nerimity.ModalComponent(
+                    type=nerimity.ModalComponentTypes.DROPDOWN,
+                    customId="continent",
+                    label="Continent",
+                    placeholder="Select your continent",
+                    options=[
+                        nerimity.ModalDropdownOption(label="North America", value="north_america"),
+                        nerimity.ModalDropdownOption(label="South America", value="south_america"),
+                        nerimity.ModalDropdownOption(label="Europe", value="europe"),
+                        nerimity.ModalDropdownOption(label="Asia", value="asia"),
+                        nerimity.ModalDropdownOption(label="Africa", value="africa"),
+                        nerimity.ModalDropdownOption(label="Australia", value="australia"),
+                        nerimity.ModalDropdownOption(label="Antarctica", value="antarctica"),
+                    ],
+                ),
+            ],
+        )
+
+        async def modal_submitted(interaction: nerimity.ButtonInteraction):
+            # interaction.data is a dict keyed by each component's customId
+            name = interaction.data.get("name", "?")
+            country = interaction.data.get("continent", "?")
+            await interaction.send_message(f"Thanks {name} from {country}!")
+
+        modal.set_callback(modal_submitted)
+        await interaction.send_modal(modal)
+
+    form_button.set_callback(button_clicked)
+    await ctx.send(buttons=[form_button])
 ```
 
 ### Sending an HTML embed
@@ -285,7 +348,7 @@ async def createrole(ctx: nerimity.Context, params):
     await ctx.send(f"Role '{name}' created.")
 ```
 
-### Setting for a role in a channel
+### Setting permissions for a role in a channel
 ```py
 @client.command(name="setpermissions")
 async def setpermissions(ctx: nerimity.Context, params):
@@ -293,16 +356,15 @@ async def setpermissions(ctx: nerimity.Context, params):
     role_id = int(params[1])
     send_messages = bool(params[2])
     join_voice = bool(params[3])
-    
+
     channel = ctx.server.get_channel(channel_id)
     role = ctx.server.get_role(role_id)
-    
+
     permissions = nerimity.Permissions.ChannelPermissions.construct(send_messages=send_messages, join_voice=join_voice)
     await channel.set_permissions(permission_integer=permissions, role=role)
-    
+
     await ctx.send(f"Permissions set for role '{role.name}' in channel '{channel.name}'.")
 ```
-
 
 ## Issues
 If you encounter any issues while using the framework feel free to open an [Issue](https://github.com/isanosaurus/nerimity.py).
