@@ -3,7 +3,6 @@ from nerimity.logger import logger
 from nerimity.roles import Role
 from nerimity.attachment import Attachment
 from nerimity.post import Post
-from nerimity.server import Server
 
 import requests
 import json

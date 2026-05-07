@@ -1,7 +1,7 @@
 from nerimity._enums import GlobalClientInformation
 from nerimity.logger import logger
 from nerimity.invite import Invite
-from nerimity.member import Member, ServerMember
+from nerimity.member import ServerMember, Member
 from nerimity.channel import Channel
 from nerimity.roles import Role
 
