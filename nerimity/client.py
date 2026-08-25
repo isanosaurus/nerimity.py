@@ -498,7 +498,7 @@ class Client:
             # Loop this indefinetly
             while True:
                 try:
-                    async with websockets.connect(f"{GlobalClientInformation.WEBSOCKET_URL}/socket.io/?EIO=4&transport=websocket") as websocket:
+                    async with websockets.connect(f"{GlobalClientInformation.WEBSOCKET_URL}/socket.io/?EIO=4&transport=websocket", max_size=16*1024*1024) as websocket:
 
                         # We only want to get the data the first time so we dont overwrite on restart
                         if first_start:
@@ -564,6 +564,8 @@ class Client:
                     # For some reason we cant import the actual class so we need to look at the __repr__() method instead
                     if e.__repr__().startswith('ConnectionClosed'):
                         logger.warn("Lost connection, attempting to reconnect.")
+                        if __LOG_WEBSOCKET_EVENTS__:
+                            logger.debug(e)
                     else:
                         raise e
 
