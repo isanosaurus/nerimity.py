@@ -22,6 +22,7 @@ class Embed():
 
 	def __init__(self, data: str = "", type: int = EmbedTypes.HTML) -> None:
 		self.type: int = type
+		self.style
 		self.body: str = Embed._decode(data) if type == EmbedTypes.HTML and data else data
 
 	# Public Static: Creates an Embed from raw HTML.
@@ -51,13 +52,12 @@ class Embed():
 	def __str__(self) -> str:
 		return self.body
 	
-	# Private Static: Unzips the Base64, zipped data from the Websocket into a JSON object.
+
+	# Private Static: Parses an HTML string into a JSON object.
 	@staticmethod
 	def _decode(data: str) -> dict:
-		"""private static | Unzips the Base64, zipped data from the Websocket into a JSON object."""
-		decoded_data = base64.b64decode(data)
-		decompressed_data = zlib.decompress(decoded_data)
-		return json.loads(decompressed_data.decode("utf-8"))
+		"""private static | Parses an HTML string into a JSON object."""
+		
 	
 	# Static: Deserialize a JSON object to an Embed object.
 	@staticmethod

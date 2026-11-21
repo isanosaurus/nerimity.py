@@ -534,6 +534,7 @@ class Client:
                                 member = ServerMember.deserialize(member_raw)
                                 self.servers[f"{member.server_id}"].members[f"{member.id}"] = member
                             for channel_raw in message_auth["channels"]:
+                                print(channel_raw)
                                 channel = Channel.deserialize(channel_raw)
                                 self.servers[f"{channel.server_id}"].channels[f"{channel.id}"] = channel
                             for role_raw in message_auth["serverRoles"]:

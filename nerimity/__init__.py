@@ -15,5 +15,6 @@ from nerimity.buttoninteraction import ButtonInteraction
 from nerimity.slashcommand import SlashCommand
 from nerimity.embed import Embed
 from nerimity.modal import Modal, ModalComponent, ModalDropdownOption
+from nerimity.webhook import Webhook
 
 pass

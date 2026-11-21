@@ -32,15 +32,16 @@ class Channel():
     """
 
     def __init__(self) -> None:
-        self.id               : int             = None
-        self.name             : str             = None
-        self.type             : int             = None
-        self.creator_id       : int             = None
-        self.server_id        : int             = None
-        self.category_id      : int             = None
-        self.last_messaged_at : float | None    = None
-        self.created_at       : float           = None
-        self.order            : int | None      = None
+        self.id               : int                 = None
+        self.name             : str                 = None
+        self.type             : int                 = None
+        self.creator_id       : int                 = None
+        self.server_id        : int                 = None
+        self.category_id      : int                 = None
+        self.last_messaged_at : float | None        = None
+        self.created_at       : float               = None
+        self.order            : int | None          = None
+        self.webhooks         : list[dict] | None   = None
     
     # Public: Updates itself with specified information.
     async def update_channel(self, server_id: int, name: str=None, icon: str=None, content: str=None) -> 'Channel':
@@ -235,7 +236,28 @@ class Channel():
                     logger.error(f"Failed to set permissions for {self}. Status code: {response.status}. Response Text: {await response.text()}")
                     raise aiohttp.ClientResponseError(response.request_info, response.history)
                 return Channel.deserialize(await response.json())
-        
+
+    async def create_webhook(self, name: str, avatar: str | None = None) -> dict:
+        """
+        Creates a webhook for the channel.
+        # Attributes
+        name: str - The name of the webhook.
+        avatar: str | None - The avatar of the webhook. Can be a base64 string or None.
+        # Returns
+        dict: The webhook object.
+        """
+        api_url = f"{GlobalClientInformation.API_URL}/channels/{self.id}/webhooks"
+        headers = {
+            "Authorization": GlobalClientInformation.TOKEN,
+            "Content-Type": "application/json",
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(api_url, headers=headers) as response:
+                if response.status != 200:
+                    logger.error(f"Failed to create webhook for {self}. Status code: {response.status}. Response Text: {await response.text()}")
+                    raise aiohttp.ClientResponseError(response.request_info, response.history)
+                return await response.json()
 
     # Public Static: Deserialize a json string to a Channel object.
     @staticmethod
@@ -252,5 +274,6 @@ class Channel():
         new_channel.last_messaged_at    = float(json["lastMessagedAt"]) if json["lastMessagedAt"] is not None else None
         new_channel.created_at          = float(json["createdAt"])
         new_channel.order               = json["order"]
+        new_channel.webhooks            = json["webhooks"] if "webhooks" in json else None
     
         return new_channel

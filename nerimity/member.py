@@ -1,4 +1,4 @@
-from nerimity._enums import GlobalClientInformation
+from nerimity._enums import GlobalClientInformation, BadgeTypes
 from nerimity.logger import logger
 from nerimity.roles import Role
 from nerimity.attachment import Attachment
@@ -18,6 +18,7 @@ class Member():
     hex_color: Hex color of the member's username text.
     avatar: Link to the avatar.
     badges: Numerical value of the badges the member has.
+    bot: True if the member has the bot badge, False if not.
 
     send_message(message_content): Sends a message to the channel.
     follow(): Follows the User.
@@ -35,6 +36,12 @@ class Member():
         self.hex_color : str        = None
         self.avatar    : str | None = None
         self.badges    : int        = None
+
+    # Public Property: True if the member has the bot badge.
+    @property
+    def bot(self) -> bool:
+        """True if the member has the bot badge, False if not."""
+        return bool(int(self.badges or 0) & BadgeTypes.BOT)
 
     # Public: Follows the user.
     def follow(self) -> None:
@@ -239,7 +246,7 @@ class ServerMember(Member):
         new_member.tag              = str(json["user"]["tag"])
         new_member.hex_color        = str(json["user"]["hexColor"])
         new_member.avatar           = str(json["user"]["avatar"])
-        new_member.badges           = str(json["user"]["badges"])
+        new_member.badges           = int(json["user"]["badges"])
         new_member.server_id        = int(json["serverId"])
         new_member.joined_at        = float(json["joinedAt"])
         new_member._role_ids        = json["roleIds"]
