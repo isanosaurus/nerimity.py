@@ -133,7 +133,7 @@ class Message():
         new_message.content         = str(json["content"])
         new_message.type            = int(json["type"])
         new_message.channel_id      = int(json["channelId"])
-        new_message.author_id       = int(json["createdById"])
+        new_message.author_id       = int(json["createdById"] if json["createdById"] is not None else json["createdBy"]["id"])
         new_message.edited_at       = float(json["editedAt"])                                           if json["editedAt"]       is not None else None
         new_message.created_at      = float(json["createdAt"])
         embed = Embed.construct(json["embed"], type=EmbedTypes.STANDARD) if json.get("embed") is not None else (Embed.construct(json["htmlEmbed"], type=EmbedTypes.HTML) if json.get("htmlEmbed") is not None else None)

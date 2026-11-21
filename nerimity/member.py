@@ -36,12 +36,7 @@ class Member():
         self.hex_color : str        = None
         self.avatar    : str | None = None
         self.badges    : int        = None
-
-    # Public Property: True if the member has the bot badge.
-    @property
-    def bot(self) -> bool:
-        """True if the member has the bot badge, False if not."""
-        return bool(int(self.badges or 0) & BadgeTypes.BOT)
+        self.bot       : bool       = None
 
     # Public: Follows the user.
     def follow(self) -> None:
@@ -143,6 +138,7 @@ class Member():
         new_member.hex_color        = str(json["hexColor"])
         new_member.avatar           = str(json["avatar"])
         new_member.badges           = int(json["badges"])
+        new_member.bot              = bool(json["bot"])
     
         return new_member
 
